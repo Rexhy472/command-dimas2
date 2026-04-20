@@ -7,23 +7,23 @@ const {
   EmbedBuilder
 } = require('discord.js');
 
-// ===== CONFIG =====
+// ===== ENV =====
 const TOKEN = process.env.TOKEN;
 const GUILD_ID = process.env.GUILD_ID;
-
-const CLIENT_ID = 'ISI_CLIENT_ID_KAMU';
-const OWNER_ID = 'ISI_ID_KAMU';
+const CLIENT_ID = process.env.CLIENT_ID;
+const OWNER_ID = process.env.OWNER_ID;
 
 // ===== CLIENT =====
 const client = new Client({
   intents: [GatewayIntentBits.Guilds]
 });
 
-// ===== REGISTER COMMAND =====
+// ===== COMMAND =====
 const commands = [
+
   new SlashCommandBuilder()
     .setName('say')
-    .setDescription('Kirim pesan biasa')
+    .setDescription('Kirim pesan sebagai bot')
     .addStringOption(option =>
       option.setName('pesan')
         .setDescription('Isi pesan')
@@ -32,27 +32,28 @@ const commands = [
 
   new SlashCommandBuilder()
     .setName('sayembed')
-    .setDescription('Kirim pesan embed')
-    .addStringOption(option =>
-      option.setName('judul')
-        .setDescription('Judul embed')
-        .setRequired(true)
-    )
-    .addStringOption(option =>
-      option.setName('isi')
-        .setDescription('Isi pesan')
-        .setRequired(true)
-    )
+    .setDescription('Kirim embed')
+    .addStringOption(o =>
+      o.setName('judul').setDescription('Judul').setRequired(true))
+    .addStringOption(o =>
+      o.setName('isi').setDescription('Isi pesan').setRequired(true))
+    .addStringOption(o =>
+      o.setName('warna').setDescription('Contoh: Blue / Red'))
 ].map(cmd => cmd.toJSON());
 
+// ===== REGISTER =====
 const rest = new REST({ version: '10' }).setToken(TOKEN);
 
 (async () => {
-  await rest.put(
-    Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID),
-    { body: commands }
-  );
-  console.log('Slash command ready');
+  try {
+    await rest.put(
+      Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID),
+      { body: commands }
+    );
+    console.log('Slash command ready');
+  } catch (err) {
+    console.error(err);
+  }
 })();
 
 // ===== READY =====
@@ -64,7 +65,7 @@ client.on('ready', () => {
 client.on('interactionCreate', async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
 
-  // 🔒 cuma kamu yang bisa
+  // 🔒 hanya owner
   if (interaction.user.id !== OWNER_ID) {
     return interaction.reply({
       content: '❌ Tidak diizinkan',
@@ -76,11 +77,7 @@ client.on('interactionCreate', async (interaction) => {
   if (interaction.commandName === 'say') {
     const text = interaction.options.getString('pesan');
 
-    await interaction.reply({
-      content: '✅ Terkirim',
-      ephemeral: true
-    });
-
+    await interaction.reply({ content: '✅ Terkirim', ephemeral: true });
     interaction.channel.send(text);
   }
 
@@ -88,18 +85,14 @@ client.on('interactionCreate', async (interaction) => {
   if (interaction.commandName === 'sayembed') {
     const judul = interaction.options.getString('judul');
     const isi = interaction.options.getString('isi');
+    const warna = interaction.options.getString('warna') || 'Blue';
 
     const embed = new EmbedBuilder()
       .setTitle(judul)
       .setDescription(isi)
-      .setColor('Blue')
-      .setFooter({ text: 'Pengumuman' });
+      .setColor(warna);
 
-    await interaction.reply({
-      content: '✅ Embed terkirim',
-      ephemeral: true
-    });
-
+    await interaction.reply({ content: '✅ Embed terkirim', ephemeral: true });
     interaction.channel.send({ embeds: [embed] });
   }
 });
